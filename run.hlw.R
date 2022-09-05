@@ -95,8 +95,7 @@ TT = length(us.data$Date)
 # set date from when to fix it. 
 T0 = which("01.01.2008" == us.data$Date)
 
-# for (fixedinterest in -2:5){
-for (fixedinterest in 2.5){
+for (fixedinterest in -2:5){
   # data
   us.log.output             <- us.data$gdp.log
   us.inflation              <- us.data$inflation
