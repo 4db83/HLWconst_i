@@ -7,7 +7,7 @@
 #              (3) Saves output.
 #------------------------------------------------------------------------------#
 rm(list=ls())
-
+cat("\014"); gc(); 
 #------------------------------------------------------------------------------#
 # Prepare data to be used in estimation.
 #
@@ -15,10 +15,10 @@ rm(list=ls())
 #
 # Set the data start and end dates manually in each prepare.rstar.data file
 #------------------------------------------------------------------------------#
-source("prepare.rstar.data.us.R")
-source("prepare.rstar.data.ca.R")
-source("prepare.rstar.data.ea.R")
-source("prepare.rstar.data.uk.R")
+# source("prepare.rstar.data.us.R")
+# source("prepare.rstar.data.ca.R")
+# source("prepare.rstar.data.ea.R")
+# source("prepare.rstar.data.uk.R")
 
 
 #------------------------------------------------------------------------------#
@@ -27,6 +27,7 @@ source("prepare.rstar.data.uk.R")
 if (!require("tis")) {install.packages("tis"); library("tis")} # Time series package
 if (!require("mFilter")) {install.packages("mFilter"); library("mFilter")} # HP filter
 if (!require("nloptr")) {install.packages("nloptr"); library("nloptr")} # Optimization
+if (!require("tictoc")) {install.packages("tictoc"); library("tictoc")} # for simple timing
 
 # Source all R programs; see code guide for details of each
 source("calculate.covariance.R")
@@ -75,18 +76,17 @@ g.pot.start.index <- 1 + ti(shiftQuarter(sample.start,-3),'quarterly')-ti(data.s
 output.col.names <- c("Date","rstar","g","z","output gap","","All results are output from the Stage 3 model.",rep("",8),"Standard Errors","Date","y*","r*","g","","rrgap")
 
 # Set number of iterations for Monte Carlo standard error procedure
-niter <- 5000
+niter <- 1
 
 # Because the MC standard error procedure is time consuming, we include a run switch
 # Set run.se to TRUE to run the procedure
-run.se <- TRUE
+run.se <- FALSE
 
 #------------------------------------------------------------------------------#
 # United States: Read in data, run estimation, and save output
 #------------------------------------------------------------------------------#
 # Read in output of prepare.rstar.data.us.R
-us.data <- read.table("inputData/rstar.data.us.csv",
-                      sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
+us.data <- read.table("inputData/rstar.data.us.csv",sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
 
 us.log.output             <- us.data$gdp.log
 us.inflation              <- us.data$inflation
@@ -94,112 +94,86 @@ us.inflation.expectations <- us.data$inflation.expectations
 us.nominal.interest.rate  <- us.data$interest
 us.real.interest.rate     <- us.nominal.interest.rate - us.inflation.expectations
 
-# Run HLW estimation for the US
-us.estimation <- run.hlw.estimation(us.log.output, us.inflation, us.real.interest.rate, us.nominal.interest.rate,
-                                    a3.constraint = a3.constraint, b2.constraint = b2.constraint, run.se = run.se)
+#------------------------------------------------------------------------------#
+# United States: Read in data, run estimation, and save output
+#------------------------------------------------------------------------------#
+# make data input folder if it does not exist
+if (!dir.exists("inputData")) {dir.create("inputData")}
+# (gdp.log, inflation, inflation.expectations, interest)
+# Read in output of prepare.rstar.data.us.R
+us.data <- read.table("inputData/US.data.csv",sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
 
-# One-sided (filtered) estimates
+TT = length(us.data$Date)
+# set date from when to fix it. 
+T0 = which("01.01.2008" == us.data$Date)
+
+# for (fixedinterest in -2:5){
+for (fixedinterest in 2.5){
+# data
+us.log.output             <- us.data$gdp.log
+us.inflation              <- us.data$inflation
+us.inflation.expectations <- us.data$inflation.expectations
+us.data[T0:TT,"interest"] <- fixedinterest
+us.nominal.interest.rate  <- us.data$interest
+us.real.interest.rate     <- us.nominal.interest.rate - us.inflation.expectations
+
+# Run HLW estimation for the US ------
+tic("Run all")
+us.estimation <- run.hlw.estimation(us.log.output, us.inflation, us.real.interest.rate, us.nominal.interest.rate,
+                                    a3.constraint = a3.constraint, b2.constraint = b2.constraint, run.se = FALSE)
+print("Done")
+toc()
+# create output parameters names etc.
+para.names = c( " a_y1"," a_y2          ",      # 2
+                " a_r           ",      # 3
+                " b_pi          ",      # 4
+                " b_y           ",      # 5
+                " sigma_y~      ",      # 6
+                " sigma_pi      ",      # 7
+                " sigma_y*      ",      # 8
+                " Log-Likelihood",
+                " Lambda.g      ",
+                " Lambda.z      " )
+
+est3 = cbind(c( us.estimation$out.stage3$theta,
+                us.estimation$out.stage3$log.likelihood,
+                us.estimation$lambda.g,
+                us.estimation$lambda.z))
+rownames(est3) = para.names
+colnames(est3) = "Stage 3 estimates"
+print(est3)
+
+# One-sided (filtered) estimates--------
 one.sided.est.us <- cbind(us.estimation$out.stage3$rstar.filtered,
                           us.estimation$out.stage3$trend.filtered,
                           us.estimation$out.stage3$z.filtered,
                           us.estimation$out.stage3$output.gap.filtered)
+# add row and column names
+colnames(one.sided.est.us) = c("rstar","g","z","output gap")
+rownames(one.sided.est.us) = us.data$Date[5:length(us.data$Date)]
 
-# Save one-sided estimates to CSV
-write.table(one.sided.est.us, 'output/one.sided.est.us.csv', row.names = FALSE, col.names = c("rstar","g","z","output gap"), quote = FALSE, sep = ',', na = ".")
+# Two-sided (smoothed) estimates
+two.sided.est.us <- cbind(us.estimation$out.stage3$rstar.smoothed,
+                          us.estimation$out.stage3$trend.smoothed,
+                          us.estimation$out.stage3$z.smoothed,
+                          us.estimation$out.stage3$output.gap.smoothed)
+# add row and column names
+colnames(two.sided.est.us) = c("rstar","g","z","output gap")
+rownames(two.sided.est.us) = us.data$Date[5:length(us.data$Date)]
+
+# SAVE OUTPUT ----
+if (!dir.exists("output")) {dir.create("output")}
+# Save one and two sided estimates to CSV
+write.table(one.sided.est.us, paste0('output/one.sided.HLW', fixedinterest, '.csv'), quote = FALSE, sep = ',', na = ".")
+write.table(two.sided.est.us, paste0('output/two.sided.HLW', fixedinterest, '.csv'), quote = FALSE, sep = ',', na = ".")
 
 # Save output to CSV
 output.us <- format.output(us.estimation, one.sided.est.us, us.real.interest.rate, sample.start, sample.end, run.se = run.se)
-write.table(output.us, 'output/output.us.csv', col.names = output.col.names, quote=FALSE, row.names=FALSE, sep = ',', na = '')
-
-#stop()
-
-#------------------------------------------------------------------------------#
-# Canada: Read in data, run estimation, and save output
-#------------------------------------------------------------------------------#
-# Read in output of prepare.rstar.data.ca.R
-ca.data <- read.table("inputData/rstar.data.ca.csv",
-                      sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
-
-ca.log.output             <- ca.data$gdp.log
-ca.inflation              <- ca.data$inflation
-ca.inflation.expectations <- ca.data$inflation.expectations
-ca.nominal.interest.rate  <- ca.data$interest
-ca.real.interest.rate     <- ca.nominal.interest.rate - ca.inflation.expectations
-
-# Run HLW estimation for Canada
-ca.estimation <- run.hlw.estimation(ca.log.output, ca.inflation, ca.real.interest.rate, ca.nominal.interest.rate,
-                                    a3.constraint = a3.constraint, b2.constraint = b2.constraint, run.se = run.se)
-
-# One-sided (filtered) estimates
-one.sided.est.ca <- cbind(ca.estimation$out.stage3$rstar.filtered,
-                          ca.estimation$out.stage3$trend.filtered,
-                          ca.estimation$out.stage3$z.filtered,
-                          ca.estimation$out.stage3$output.gap.filtered)
-
-# Save one-sided estimates to CSV
-write.table(one.sided.est.ca, 'output/one.sided.est.ca.csv', row.names = FALSE, col.names = c("rstar","g","z","output gap"), quote = FALSE, sep = ',', na = ".")
-
-# Save output to CSV
-output.ca <- format.output(ca.estimation, one.sided.est.ca, ca.real.interest.rate, sample.start, sample.end, run.se = run.se)
-write.table(output.ca, 'output/output.ca.csv', col.names = output.col.names, quote=FALSE, row.names=FALSE, sep = ',', na = '')
-
-#------------------------------------------------------------------------------#
-# Euro Area: Read in data, run estimation, and save output
-#------------------------------------------------------------------------------#
-# Read in output of prepare.rstar.data.ea.R
-ea.data <- read.table("inputData/rstar.data.ea.csv",
-                      sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
-
-ea.log.output             <- ea.data$gdp.log
-ea.inflation              <- ea.data$inflation
-ea.inflation.expectations <- ea.data$inflation.expectations
-ea.nominal.interest.rate  <- ea.data$interest
-ea.real.interest.rate     <- ea.nominal.interest.rate - ea.inflation.expectations
-
-# Run HLW estimation for the Euro Area
-ea.estimation <- run.hlw.estimation(ea.log.output, ea.inflation, ea.real.interest.rate, ea.nominal.interest.rate,
-                                    a3.constraint = a3.constraint, b2.constraint = b2.constraint, run.se = run.se)
-
-# One-sided (filtered) estimates
-one.sided.est.ea <- cbind(ea.estimation$out.stage3$rstar.filtered,
-                          ea.estimation$out.stage3$trend.filtered,
-                          ea.estimation$out.stage3$z.filtered,
-                          ea.estimation$out.stage3$output.gap.filtered)
-
-# Save one-sided estimates to CSV
-write.table(one.sided.est.ea, 'output/one.sided.est.ea.csv', row.names = FALSE, col.names = c("rstar","g","z","output gap"), quote = FALSE, sep = ',', na = ".")
-
-# Save output to CSV
-output.ea <- format.output(ea.estimation, one.sided.est.ea, ea.real.interest.rate, ea.sample.start, sample.end, run.se = run.se)
-write.table(output.ea, 'output/output.ea.csv', col.names = output.col.names, quote=FALSE, row.names=FALSE, sep = ',', na = '')
+write.table(output.us, paste0('output/output.HLW', fixedinterest, '.csv'), col.names = output.col.names, quote=FALSE, row.names=FALSE, sep = ',', na = '')
+}
 
 
-#------------------------------------------------------------------------------#
-# United Kingdom: Read in data, run estimation, and save output
-#------------------------------------------------------------------------------#
-# Read in output of prepare.rstar.data.uk.R
-uk.data <- read.table("inputData/rstar.data.uk.csv",
-                      sep = ',', na.strings = ".", header=TRUE, stringsAsFactors=FALSE)
 
-uk.log.output             <- uk.data$gdp.log
-uk.inflation              <- uk.data$inflation
-uk.inflation.expectations <- uk.data$inflation.expectations
-uk.nominal.interest.rate  <- uk.data$interest
-uk.real.interest.rate     <- uk.nominal.interest.rate - uk.inflation.expectations
 
-# Run HLW estimation for the UK
-uk.estimation <- run.hlw.estimation(uk.log.output, uk.inflation, uk.real.interest.rate, uk.nominal.interest.rate,
-                                    a3.constraint = a3.constraint, b2.constraint = b2.constraint, run.se = run.se)
 
-# One-sided (filtered) estimates
-one.sided.est.uk <- cbind(uk.estimation$out.stage3$rstar.filtered,
-                          uk.estimation$out.stage3$trend.filtered,
-                          uk.estimation$out.stage3$z.filtered,
-                          uk.estimation$out.stage3$output.gap.filtered)
 
-# Save one-sided estimates to CSV
-write.table(one.sided.est.uk, 'output/one.sided.est.uk.csv', row.names = FALSE, col.names = c("rstar","g","z","output gap"), quote = FALSE, sep = ',', na = ".")
-
-# Save output to CSV
-output.uk <- format.output(uk.estimation, one.sided.est.uk, uk.real.interest.rate, sample.start, sample.end, run.se = run.se)
-write.table(output.uk, 'output/output.uk.csv', col.names = output.col.names, quote=FALSE, row.names=FALSE, sep = ',', na = '')

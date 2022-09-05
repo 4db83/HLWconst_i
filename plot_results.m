@@ -3,7 +3,7 @@ clear;clc;
 % out = readtable('../inputData/US.data.csv')
 % usdata_hlw = table2timetable(out);
 % save('../inputData/usdata_hlw.mat','usdata_hlw')
-load('../inputData/usdata_hlw.mat')
+load('./inputData/usdata_hlw.mat')
 % usdata_hlw
 
 %% now read teh different csv output files for the variosu scenarios
@@ -13,8 +13,8 @@ varnames = {'HLW','HLW-2','HLW-1','HLW0','HLW1','HLW2','HLW3','HLW4','HLW5'};
 % read in from teh csv files 
 % rstar	g	z	output gap
 for ii = 1:length(varnames)
-  two_out(:,:,ii) = dlmread(['two.sided.' varnames{ii} '.csv'],',',1,1);
-  one_out(:,:,ii) = dlmread(['one.sided.' varnames{ii} '.csv'],',',1,1);
+  two_out(:,:,ii) = dlmread(['./output/two.sided.' varnames{ii} '.csv'],',',1,1);
+  one_out(:,:,ii) = dlmread(['./output/one.sided.' varnames{ii} '.csv'],',',1,1);
 end
 
 % extract the variables of interest
@@ -38,14 +38,18 @@ TT = length(Dates);
 vnames0 = char(varnames);
 vnames = cellstr([vnames0(2:end,1:3) repmat(', with $i= ', 8,1) num2str((-2:5)') repmat('$',8,1)]);
 vnames = [{'HLW Original'}; vnames];
-disp(Dates(T0));
+disp(['Date of fixinig the nominal rate:  ' lstd(Dates(T0))]);
+disp('plotting now')
+
 kk = 4;
+
+% make interest rate seris to be plotted
+interest_rates_2_plot = repmat(usdata_hlw.interest(5:end),1,9);
+interest_rates_2_plot(T0:end,2:end) = repmat([-2:5],TT-T0+1,1);
 
 subplot(5,1,1);
 hold on; 
-  intplot = repmat(usdata_hlw.interest(5:end),1,9);
-  intplot(T0:end,2:end) = repmat([-2:5],TT-T0+1,1);
-  plot(intplot(:,kk:end))
+  plot(interest_rates_2_plot(:,kk:end))
   plot(usdata_hlw.interest(5:end),'k--')
   setplot(moveup(.04),15,0)
   setdateticks(Dates,20)
@@ -114,7 +118,7 @@ add2yaxislabel
 subtitle('Smoothed other factor $z_t$', stp)
 
 
-
+disp('Done')
 
 
 
