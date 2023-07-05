@@ -5,6 +5,13 @@ clear;clc;
 % save('../inputData/usdata_hlw.mat','usdata_hlw')
 load('./inputData/usdata_hlw.mat')
 % usdata_hlw
+% SET PATH TO TOOLBOX IF NEEDED: WIN (\) AND MAC/UNIX (/)
+% addpath(genpath('./utility.Functions'))             % local path to utility.Functions
+if exist(('D:/matlab.tools/db.toolbox/db'),'dir')
+    addpath(genpath('D:/matlab.tools/db.toolbox/db'))         % set path to db functions
+elseif exist(('G:/Other computers/P1/db.toolbox/db'),'dir')
+    addpath(genpath('G:/Other computers/P1/db.toolbox/db'))   % set path to db functions
+end
 
 %% now read teh different csv output files for the variosu scenarios
 % twosided = 'two.sided.'
@@ -29,9 +36,10 @@ z.smoothed     = array2timetable(squeeze(two_out(:,3,:)), 'RowTimes',usdata_hlw.
 
 %% PLOT THE RSTAR ESTIMATES 
 set(groot,'defaultLineLineWidth',2); 
-moveup = @(x) (get(gca,'Position') + [0 x 0 0]);
-stp = -1.25;
+moveup = @(x) (get(gca,'Position') + [-.08 x .13 .06]);
+stp = -1.19;
 clf
+fnt = 17;
 Dates = usdata_hlw.Date(5:end);
 T0 = find( datenum(Dates) == datenum('2008-01-01'));
 TT = length(Dates);
@@ -51,13 +59,13 @@ subplot(5,1,1);
 hold on; 
   plot(interest_rates_2_plot(:,kk:end))
   plot(usdata_hlw.interest(5:end),'k--')
-  setplot(moveup(.04),15,0)
+  setplot(moveup(.00),0,fnt)
   setdateticks(Dates,20)
 hold off;
 setoutsideTicks
 add2yaxislabel
 % addlegend(varnames([4:end 1]))
-subtitle('Actual and counterfactual interest rates $i_t$', stp)
+addsubtitle('Actual and counterfactual interest rates $i_t$', stp)
 
 subplot(5,1,2);
 hold on; 
@@ -65,57 +73,61 @@ hold on;
 %   plot(xplot(:,1),'k','LineWidth',3)
   plot(xplot(:,kk:end))
   plot(xplot(:,1),'k--')
-  setplot(moveup(.05),15,0)
+  setplot(moveup(-.05),0,fnt)
   setdateticks(Dates,20)
 hold off;
 setoutsideTicks
 add2yaxislabel
 addlegend(vnames([kk:end 1]),[],13)
-subtitle('Filtered natural rate $r^\ast_t$', stp)
+addsubtitle('Filtered natural rate $r^\ast_t$', stp)
 
-subplot(5,1,3);
+print2pdf('counter_factual_filtered')
+
+subplot(5,1,2);
 hold on;
   xplot = rstar.smoothed.Variables;
   plot(xplot(:,kk:end))
   ylim([0 6])
   plot(xplot(:,1),'k--')
-  setplot(moveup(.06),15,0)
+  setplot(moveup(-.05),0,fnt)
   setdateticks(Dates,20)
 hold off;
 setoutsideTicks
 add2yaxislabel
-% addlegend(vnames([kk:end 1]),[],13)
-subtitle('Smoothed natural rate $r^\ast_t$', stp)
+addlegend(vnames([kk:end 1]),[],13)
+addsubtitle('Smoothed natural rate $r^\ast_t$', stp)
 
-subplot(5,1,4);
-hold on;
-  xplot = z.filtered.Variables;
-%   plot(xplot(:,1),'k','LineWidth',3)
-  plot(xplot(:,kk:end))
-  ylim([-2 1.5])
-  plot(xplot(:,1),'k--')
-  setplot(moveup(.07),15,1)
-  setdateticks(Dates,20)
-hold off; hline(0)
-setoutsideTicks
-add2yaxislabel
-% addlegend(varnames([4:end 1]))
-subtitle('Filtered other factor $z_t$', stp)
+print2pdf('counter_factual_smoohted')
 
-subplot(5,1,5);
-hold on;
-  xplot = z.smoothed.Variables;
-%   plot(xplot(:,1),'k','LineWidth',3)
-  plot(xplot(:,kk:end))
-  ylim([-2 1.5])
-  plot(xplot(:,1),'k--')
-  setplot(moveup(.08),15,1)
-  setdateticks(Dates,20)
-hold off; hline(0)
-setoutsideTicks
-add2yaxislabel
-% addlegend(varnames([4:end 1]))
-subtitle('Smoothed other factor $z_t$', stp)
+% subplot(5,1,4);
+% hold on;
+%   xplot = z.filtered.Variables;
+% %   plot(xplot(:,1),'k','LineWidth',3)
+%   plot(xplot(:,kk:end))
+%   ylim([-2 1.5])
+%   plot(xplot(:,1),'k--')
+%   setplot(moveup(.00),1,15)
+%   setdateticks(Dates,20)
+% hold off; hline(0)
+% setoutsideTicks
+% add2yaxislabel
+% % addlegend(varnames([4:end 1]))
+% addsubtitle('Filtered other factor $z_t$', stp)
+% 
+% subplot(5,1,5);
+% hold on;
+%   xplot = z.smoothed.Variables;
+% %   plot(xplot(:,1),'k','LineWidth',3)
+%   plot(xplot(:,kk:end))
+%   ylim([-2 1.5])
+%   plot(xplot(:,1),'k--')
+%   setplot(moveup(.08),1,15)
+%   setdateticks(Dates,20)
+% hold off; hline(0)
+% setoutsideTicks
+% add2yaxislabel
+% % addlegend(varnames([4:end 1]))
+% addsubtitle('Smoothed other factor $z_t$', stp)
 
 
 disp('Done')
