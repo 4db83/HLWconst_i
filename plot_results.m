@@ -7,11 +7,7 @@ load('./inputData/usdata_hlw.mat')
 % usdata_hlw
 % SET PATH TO TOOLBOX IF NEEDED: WIN (\) AND MAC/UNIX (/)
 % addpath(genpath('./utility.Functions'))             % local path to utility.Functions
-if exist(('D:/matlab.tools/db.toolbox/db'),'dir')
-    addpath(genpath('D:/matlab.tools/db.toolbox/db'))         % set path to db functions
-elseif exist(('G:/Other computers/P1/db.toolbox/db'),'dir')
-    addpath(genpath('G:/Other computers/P1/db.toolbox/db'))   % set path to db functions
-end
+addpath(genpath('D:/matlab.tools/db.toolbox/db'))     % set path to db functions
 
 %% now read teh different csv output files for the variosu scenarios
 % twosided = 'two.sided.'
@@ -53,26 +49,27 @@ disp(['Date of fixinig the nominal rate:  ' lstd(Dates(T0))]);
 disp('plotting now')
 TYPE_ = 'Filtered';
 
-SMOOTHED_ = 1;
+SMOOTHED_ = 0;
 if SMOOTHED_ TYPE_ = 'Smoothed'; end
 
 % THIS TRUNCATES WHAT TO PLOT
-kk = 4;
+kk = 2;
 
 % make interest rate seris to be plotted
 interest_rates_2_plot = repmat(usdata_hlw.interest(5:end),1,9);
 interest_rates_2_plot(T0:end,2:end) = repmat([-2:5],TT-T0+1,1);
+interest_rates_2_plot(1:T0-1,:) = nan; % for plotting, remove the other series of the counterfactual series
 
 subplot(5,1,1);
 hold on; 
   plot(interest_rates_2_plot(:,kk:end))
   plot(usdata_hlw.interest(5:end),'k--')
-  setplot(moveup(.05),0,fnt)
+  setplot(moveup(.04),0,fnt)
   setdateticks(Dates,20)
-hold off;
+hold off; hline(0)
 setoutsideTicks
 add2yaxislabel
-addlegend(vnames([kk:end 1]),[],13)
+% addlegend(vnames([kk:end 1]),[],13)
 addsubtitle('Actual and counterfactual interest rates $i_t$', stp)
 
 subplot(5,1,2);hold on; 
@@ -80,12 +77,12 @@ subplot(5,1,2);hold on;
   if SMOOTHED_ xplot = rstar.smoothed.Variables; end
   plot(xplot(:,kk:end))
   plot(xplot(:,1),'k--')
-  setplot(moveup(.04),0,fnt)
+  setplot(moveup(.02),0,fnt)
   setdateticks(Dates,20)
-hold off;
+hold off; hline(0)
 setoutsideTicks
 add2yaxislabel
-% addlegend(vnames([kk:end 1]),[],13)
+addlegend(vnames([kk:end 1]), 7,13)
 addsubtitle([TYPE_ ' natural rate $r^\ast_t$'], stp)
 
 subplot(5,1,3);hold on; 
@@ -93,7 +90,7 @@ subplot(5,1,3);hold on;
   if SMOOTHED_ xplot = g.smoothed.Variables; end
   plot(xplot(:,kk:end))
   plot(xplot(:,1),'k--')
-  setplot(moveup(.04),0,fnt)
+  setplot(moveup(.00),0,fnt)
   setdateticks(Dates,20)
 hold off;
 setyticklabels(0:2:6,0)
@@ -107,7 +104,7 @@ subplot(5,1,4);hold on;
   if SMOOTHED_ xplot = z.smoothed.Variables; end
   plot(xplot(:,kk:end))
   plot(xplot(:,1),'k--')
-  setplot(moveup(-.00),0,fnt)
+  setplot(moveup(-.02),0,fnt)
   setdateticks(Dates,20)
   hline(0)
 hold off;
@@ -122,7 +119,7 @@ subplot(5,1,5);hold on;
   if SMOOTHED_ xplot = ytld.smoothed.Variables; end
   plot(xplot(:,kk:end))
   plot(xplot(:,1),'k--')
-  setplot(moveup(-.00),0,fnt)
+  setplot(moveup(-.04),0,fnt)
   setdateticks(Dates,20)
   hline(0)
 hold off;
